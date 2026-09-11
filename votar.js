@@ -1,6 +1,8 @@
 /* ============================================================
-   votar.js — Integración exacta con votar.html
+   votar.js — Integración exacta con votar.html y Tiempo Real
    ============================================================ */
+
+let intervaloMonitoreoUrna = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   const pasoIngreso = document.getElementById('pasoIngreso');
@@ -20,6 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Validar si la urna sigue abierta antes de consultar el censo
+      const urnaAbierta = await Store.urnaHabilitada();
+      if (!urnaAbierta) {
+        mostrarError('La urna se encuentra cerrada por el jurado.');
+        return;
+      }
+
       // Estado de carga visual
       btnVerificar.disabled = true;
       const textoOriginal = btnVerificar.textContent;
@@ -33,11 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res && res.autorizado) {
           sessionStorage.setItem('sena_doc_actual', doc);
 
-          // Alternar pantallas según los IDs de tu HTML
+          // Alternar pantallas según los IDs del HTML
           pasoIngreso.style.display = 'none';
           pasoTarjeton.style.display = 'block';
 
           await renderizarTarjeton();
+
+          // Monitorear en segundo plano si el jurado cierra la urna en vivo
+          if (!intervaloMonitoreoUrna) {
+            intervaloMonitoreoUrna = setInterval(async () => {
+              const sigueAbierta = await Store.urnaHabilitada();
+              if (!sigueAbierta) {
+                const contenedorUrnaCerrada = document.getElementById('msjUrnaCerrada');
+                const contenedorTarjeton = document.getElementById('contenedorTarjeton');
+                if (contenedorUrnaCerrada) contenedorUrnaCerrada.style.display = 'block';
+                if (contenedorTarjeton) contenedorTarjeton.style.display = 'none';
+              }
+            }, 4000);
+          }
         } else {
           mostrarError((res && res.motivo) ? res.motivo : 'No te encuentras habilitado en el censo electoral.');
         }
@@ -84,7 +106,10 @@ async function renderizarTarjeton() {
 
   if (!rejilla) return;
 
-  if (!Store.urnaHabilitada()) {
+  // Consulta asíncrona a Google Sheets
+  const urnaAbierta = await Store.urnaHabilitada();
+
+  if (!urnaAbierta) {
     if (contenedorUrnaCerrada) contenedorUrnaCerrada.style.display = 'block';
     if (contenedorTarjeton) contenedorTarjeton.style.display = 'none';
     return;
@@ -170,6 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         await Store.registrarVoto(doc, candidatoSeleccionadoId);
         sessionStorage.removeItem('sena_doc_actual');
+
+        if (intervaloMonitoreoUrna) {
+          clearInterval(intervaloMonitoreoUrna);
+        }
 
         if (modal) modal.style.display = 'none';
         if (modalExito) modalExito.style.display = 'flex';
