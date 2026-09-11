@@ -1,59 +1,79 @@
 /* ============================================================
-   votar.js — Proceso de Validación y Votación del Aprendiz
+   votar.js — Integración exacta con votar.html
    ============================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const formIngreso = document.getElementById('formIngreso');
-  const btnContinuar = document.getElementById('btnContinuar');
-  const txtDoc = document.getElementById('numDoc');
-  const errorDoc = document.getElementById('errorDoc');
-  const vistaIngreso = document.getElementById('vistaIngreso');
-  const vistaTarjeton = document.getElementById('vistaTarjeton');
+  const pasoIngreso = document.getElementById('pasoIngreso');
+  const pasoTarjeton = document.getElementById('pasoTarjeton');
+  const docInput = document.getElementById('docIdentidad');
+  const btnVerificar = document.getElementById('btnVerificar');
+  const msjError = document.getElementById('msjErrorIngreso');
 
-  if (formIngreso) {
-    formIngreso.addEventListener('submit', async (e) => {
+  if (btnVerificar) {
+    btnVerificar.addEventListener('click', async (e) => {
       e.preventDefault();
       
-      const doc = txtDoc.value.trim();
-      if (!doc) return;
+      const doc = docInput.value.trim();
 
-      // Estado visual de carga en el botón
-      btnContinuar.disabled = true;
-      const textoOriginal = btnContinuar.textContent;
-      btnContinuar.textContent = 'Validando censo...';
-      if (errorDoc) errorDoc.style.display = 'none';
+      if (!doc) {
+        mostrarError('Por favor ingresa tu número de documento.');
+        return;
+      }
+
+      // Estado de carga visual
+      btnVerificar.disabled = true;
+      const textoOriginal = btnVerificar.textContent;
+      btnVerificar.textContent = 'Validando censo...';
+      ocultarError();
 
       try {
         // Consultar habilitación en Google Sheets
         const res = await Store.verificarDocumento(doc);
 
-        if (res.autorizado) {
-          // Guardar cédula en sesión temporal
+        if (res && res.autorizado) {
           sessionStorage.setItem('sena_doc_actual', doc);
-          
-          // Cambiar a la pantalla del tarjetón
-          vistaIngreso.style.display = 'none';
-          vistaTarjeton.style.display = 'block';
-          
-          // Cargar candidatos
+
+          // Alternar pantallas según los IDs de tu HTML
+          pasoIngreso.style.display = 'none';
+          pasoTarjeton.style.display = 'block';
+
           await renderizarTarjeton();
         } else {
-          // Mostrar mensaje de error si no está en lista o ya votó
-          if (errorDoc) {
-            errorDoc.textContent = res.motivo || 'No autorizado para votar.';
-            errorDoc.style.display = 'block';
-          } else {
-            alert(res.motivo || 'No autorizado para votar.');
-          }
+          mostrarError((res && res.motivo) ? res.motivo : 'No te encuentras habilitado en el censo electoral.');
         }
       } catch (err) {
-        console.error(err);
-        alert('Ocurrió un error al conectar con el servidor. Verifica la URL de Google Apps Script.');
+        console.error('Error de conexión:', err);
+        mostrarError('Ocurrió un error al verificar la cédula. Revisa la URL en store.js.');
       } finally {
-        btnContinuar.disabled = false;
-        btnContinuar.textContent = textoOriginal;
+        btnVerificar.disabled = false;
+        btnVerificar.textContent = textoOriginal;
       }
     });
+  }
+
+  // Permitir la tecla Enter en el input de documento
+  if (docInput) {
+    docInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnVerificar.click();
+      }
+    });
+  }
+
+  function mostrarError(mensaje) {
+    if (msjError) {
+      msjError.textContent = mensaje;
+      msjError.style.display = 'block';
+    } else {
+      alert(mensaje);
+    }
+  }
+
+  function ocultarError() {
+    if (msjError) {
+      msjError.style.display = 'none';
+    }
   }
 });
 
@@ -61,6 +81,8 @@ async function renderizarTarjeton() {
   const contenedorUrnaCerrada = document.getElementById('msjUrnaCerrada');
   const contenedorTarjeton = document.getElementById('contenedorTarjeton');
   const rejilla = document.getElementById('rejillaCandidatos');
+
+  if (!rejilla) return;
 
   if (!Store.urnaHabilitada()) {
     if (contenedorUrnaCerrada) contenedorUrnaCerrada.style.display = 'block';
@@ -76,18 +98,19 @@ async function renderizarTarjeton() {
   const candidatos = await Store.obtenerCandidatos();
 
   let html = candidatos.map(c => `
-    <div class="casilla" tabindex="0" role="button" data-id="${c.id}">
+    <div class="casilla" tabindex="0" role="button" data-id="${c.id}" data-nombre="${escaparAtributo(c.nombres)}">
       ${c.fotoUrl 
         ? `<img class="foto" src="${escaparAtributo(c.fotoUrl)}" alt="Foto candidato">`
-        : `<div class="foto" style="display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--verde-oscuro)">N.º ${c.numero}</div>`}
+        : `<div class="foto" style="display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--verde-sena)">N.º ${c.numero}</div>`}
       <div class="num">Candidato N.º ${c.numero}</div>
       <div class="nombre">${escaparTexto(c.nombres)}</div>
       <small style="color:#666;">${escaparTexto(c.programa || '')}</small>
     </div>
   `).join('');
 
+  // Voto en blanco
   html += `
-    <div class="casilla" tabindex="0" role="button" data-id="BLANCO">
+    <div class="casilla" tabindex="0" role="button" data-id="BLANCO" data-nombre="Voto en Blanco">
       <div class="foto" style="display:flex;align-items:center;justify-content:center;background:#EEE;font-weight:bold;">BLANCO</div>
       <div class="num">Opción</div>
       <div class="nombre">Voto en Blanco</div>
@@ -96,41 +119,78 @@ async function renderizarTarjeton() {
 
   rejilla.innerHTML = html;
 
+  // Manejar clic en los candidatos
   rejilla.querySelectorAll('.casilla').forEach(tarjeta => {
-    tarjeta.addEventListener('click', () => abrirModalConfirmacion(tarjeta.dataset.id));
+    tarjeta.addEventListener('click', () => {
+      abrirModalConfirmacion(tarjeta.dataset.id, tarjeta.dataset.nombre);
+    });
   });
 }
 
-function abrirModalConfirmacion(candidatoId) {
-  if (confirm('¿Está seguro de registrar su voto por esta opción?')) {
-    procesarVoto(candidatoId);
+let candidatoSeleccionadoId = null;
+
+function abrirModalConfirmacion(id, nombre) {
+  candidatoSeleccionadoId = id;
+  const modal = document.getElementById('modalConfirmacion');
+  const textoSeleccion = document.getElementById('textoSeleccion');
+  
+  if (textoSeleccion) {
+    textoSeleccion.textContent = `Has seleccionado: ${nombre}`;
+  }
+  if (modal) {
+    modal.style.display = 'flex';
   }
 }
 
-async function procesarVoto(candidatoId) {
-  const doc = sessionStorage.getItem('sena_doc_actual');
-  if (!doc) {
-    alert('Error de sesión. Por favor ingrese su documento de nuevo.');
-    location.reload();
-    return;
+// Configurar acciones dentro del Modal de Confirmación
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('modalConfirmacion');
+  const btnCancelar = document.getElementById('btnCancelarModal');
+  const btnConfirmar = document.getElementById('btnConfirmarModal');
+  const modalExito = document.getElementById('modalExito');
+
+  if (btnCancelar) {
+    btnCancelar.addEventListener('click', () => {
+      if (modal) modal.style.display = 'none';
+      candidatoSeleccionadoId = null;
+    });
   }
 
-  try {
-    await Store.registrarVoto(doc, candidatoId);
-    sessionStorage.removeItem('sena_doc_actual');
-    alert('¡Su voto ha sido registrado con éxito!');
-    location.reload();
-  } catch (e) {
-    alert('Error al guardar el voto. Intente de nuevo.');
+  if (btnConfirmar) {
+    btnConfirmar.addEventListener('click', async () => {
+      const doc = sessionStorage.getItem('sena_doc_actual');
+      if (!doc || !candidatoSeleccionadoId) {
+        alert('Sesión no válida. Ingrese su número de documento nuevamente.');
+        location.reload();
+        return;
+      }
+
+      btnConfirmar.disabled = true;
+
+      try {
+        await Store.registrarVoto(doc, candidatoSeleccionadoId);
+        sessionStorage.removeItem('sena_doc_actual');
+
+        if (modal) modal.style.display = 'none';
+        if (modalExito) modalExito.style.display = 'flex';
+
+        setTimeout(() => {
+          location.reload();
+        }, 3000);
+      } catch (e) {
+        alert('Ocurrió un error al registrar el voto. Intente nuevamente.');
+        btnConfirmar.disabled = false;
+      }
+    });
   }
-}
+});
 
 function escaparTexto(str) {
   const d = document.createElement('div');
-  d.textContent = str;
+  d.textContent = str || '';
   return d.innerHTML;
 }
 
 function escaparAtributo(str) {
-  return String(str).replace(/"/g, '&quot;');
+  return String(str || '').replace(/"/g, '&quot;');
 }
