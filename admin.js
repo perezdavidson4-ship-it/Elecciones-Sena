@@ -56,28 +56,34 @@ btnSalir.addEventListener('click', e => {
   mostrarPanelSiCorresponde();
 });
 
-// ---------- Control de Urna ----------
+// ---------- Control de Urna (Actualizado con async/await) ----------
 
-document.getElementById('btnAbrir').addEventListener('click', () => {
-  Store.fijarUrna(true);
-  renderEstadoUrna();
+document.getElementById('btnAbrir').addEventListener('click', async () => {
+  document.getElementById('btnAbrir').disabled = true;
+  await Store.fijarUrna(true);
+  await renderEstadoUrna();
 });
 
-document.getElementById('btnCerrar').addEventListener('click', () => {
-  Store.fijarUrna(false);
-  renderEstadoUrna();
+document.getElementById('btnCerrar').addEventListener('click', async () => {
+  document.getElementById('btnCerrar').disabled = true;
+  await Store.fijarUrna(false);
+  await renderEstadoUrna();
 });
 
-function renderEstadoUrna() {
-  const abierta = Store.urnaHabilitada();
+async function renderEstadoUrna() {
+  const abierta = await Store.urnaHabilitada();
   const cont = document.getElementById('estadoUrnaTexto');
-  cont.innerHTML = `
-    <div class="estado-urna ${abierta ? 'abierta' : 'cerrada'}">
-      <span class="punto"></span>
-      ${abierta ? 'Urna abierta — se están recibiendo votos' : 'Urna cerrada — votación finalizada'}
-    </div>`;
-  document.getElementById('btnAbrir').disabled = abierta;
-  document.getElementById('btnCerrar').disabled = !abierta;
+  if (cont) {
+    cont.innerHTML = `
+      <div class="estado-urna ${abierta ? 'abierta' : 'cerrada'}">
+        <span class="punto"></span>
+        ${abierta ? 'Urna abierta — se están recibiendo votos' : 'Urna cerrada — votación finalizada'}
+      </div>`;
+  }
+  const btnAbrir = document.getElementById('btnAbrir');
+  const btnCerrar = document.getElementById('btnCerrar');
+  if (btnAbrir) btnAbrir.disabled = abierta;
+  if (btnCerrar) btnCerrar.disabled = !abierta;
 }
 
 // ---------- Gestión de Candidatos ----------
@@ -145,11 +151,14 @@ async function renderResultados() {
   const total = datosVotos.total || 0;
   const votosBlanco = conteo['BLANCO'] || 0;
 
-  document.getElementById('resumenTotal').innerHTML = `
-    <div class="metrica"><strong>${total}</strong><span>Votos Registrados</span></div>
-    <div class="metrica"><strong>${votosBlanco}</strong><span>En Blanco</span></div>
-    <div class="metrica"><strong>${candidatos.length}</strong><span>Candidatos</span></div>
-  `;
+  const resumenTotal = document.getElementById('resumenTotal');
+  if (resumenTotal) {
+    resumenTotal.innerHTML = `
+      <div class="metrica"><strong>${total}</strong><span>Votos Registrados</span></div>
+      <div class="metrica"><strong>${votosBlanco}</strong><span>En Blanco</span></div>
+      <div class="metrica"><strong>${candidatos.length}</strong><span>Candidatos</span></div>
+    `;
+  }
 
   const maximo = Math.max(1, ...candidatos.map(c => conteo[c.id] || 0), votosBlanco);
 
@@ -181,8 +190,11 @@ async function renderResultados() {
       <div class="barra-fondo"><div class="barra-relleno" style="width:${anchoBlanco}%"></div></div>
     </div>`;
 
-  document.getElementById('resultados').innerHTML =
-    (candidatos.length === 0 ? '<p class="ayuda">Registra candidatos para habilitar los resultados.</p>' : filas) + filaBlanco;
+  const resultadosCont = document.getElementById('resultados');
+  if (resultadosCont) {
+    resultadosCont.innerHTML =
+      (candidatos.length === 0 ? '<p class="ayuda">Registra candidatos para habilitar los resultados.</p>' : filas) + filaBlanco;
+  }
 }
 
 document.getElementById('btnReiniciar').addEventListener('click', async () => {
