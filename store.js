@@ -2,8 +2,7 @@
    store.js — Sincronización Global y Tiempo Real con Google Sheets
    ============================================================ */
 
-// Reemplaza esta URL por la de tu despliegue en Google Apps Script
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx892IAxBdQp7EIg4wOreDTlurXzzrM32iYBTyeu0GnZaEd9htTfEXz1mCcRgfUbA9mvg/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-vBGTadWx9kj42s9tXaBuMrUc7Eq3IV1eAQgTKNiQ0F_VTKM3i03tj7dfb3CwCiSt/exec";
 
 const Store = {
   async obtenerCandidatos() {
@@ -35,13 +34,26 @@ const Store = {
     });
   },
 
-  urnaHabilitada() {
-    const estado = localStorage.getItem('sena_urna_abierta');
-    return estado === null ? true : JSON.parse(estado);
+  // Consulta en vivo a la hoja de Google Sheets si la urna está abierta
+  async urnaHabilitada() {
+    try {
+      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=obtenerEstadoUrna`);
+      const data = await res.json();
+      return data.abierta;
+    } catch (e) {
+      console.error(e);
+      return true;
+    }
   },
 
-  fijarUrna(estado) {
-    localStorage.setItem('sena_urna_abierta', JSON.stringify(estado));
+  // Envía la orden a Google Sheets para abrir o cerrar la urna
+  async fijarUrna(estado) {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'cambiarEstadoUrna', abierta: estado })
+    });
   },
 
   async verificarDocumento(doc) {
