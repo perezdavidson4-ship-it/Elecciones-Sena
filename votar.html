@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mesa de Votación — SENA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="franja"></div>
+
+  <header class="topbar">
+    <div class="marca">SENA <span>Elecciones</span></div>
+    <nav>
+      <a href="index.html">Salir</a>
+    </nav>
+  </header>
+
+  <main class="envolvente">
+
+    <!-- Paso 1: Verificación e Ingreso del Documento -->
+    <section id="pasoIngreso" class="panel">
+      <div class="encabezado-pagina">
+        <div class="antetitulo">Identificación del Aprendiz</div>
+        <h2>Ingresa tu documento</h2>
+        <p>Digita tu número de documento de identidad para validar tu habilitación en el censo electoral.</p>
+      </div>
+
+      <div class="campo">
+        <label for="docIdentidad">Número de Documento / TI / CC / CCE:</label>
+        <input type="text" id="docIdentidad" placeholder="Ej. 1007123456" autocomplete="off" autofocus>
+      </div>
+
+      <div id="msjErrorIngreso" style="color: var(--rojo); margin-bottom: 12px; font-weight: 600; display: none;"></div>
+
+      <button id="btnVerificar" class="boton primario bloque">Continuar al Tarjetón</button>
+    </section>
+
+    <!-- Paso 2: Tarjetón Electoral (Oculto inicialmente) -->
+    <section id="pasoTarjeton" style="display: none;">
+      
+      <div id="msjUrnaCerrada" class="panel" style="display: none; text-align: center;">
+        <h2>Urna Cerrada</h2>
+        <p>En este momento la jornada de votación se encuentra cerrada por el jurado. Por favor espera a que sea habilitada.</p>
+      </div>
+
+      <div id="contenedorTarjeton" class="tarjeton">
+        <div class="tarjeton-cabecera">
+          <h1>TARJETÓN ELECTORAL</h1>
+          <p>Selecciona la opción de tu preferencia haciendo clic o presionando la casilla correspondiente.</p>
+        </div>
+
+        <div id="rejillaCandidatos" class="rejilla-candidatos">
+          <!-- Se renderizan los candidatos dinámicamente desde votar.js -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Modal de Confirmación de Voto -->
+  <div id="modalConfirmacion" class="modal-fondo" style="display: none;">
+    <div class="modal-caja">
+      <h3>¿Confirmas tu elección?</h3>
+      <p id="textoSeleccion"></p>
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button id="btnCancelarModal" class="boton fantasma bloque">Cancelar</button>
+        <button id="btnConfirmarModal" class="boton primario bloque">Votar Ahora</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Éxito / Finalización -->
+  <div id="modalExito" class="modal-fondo" style="display: none;">
+    <div class="modal-caja">
+      <div style="font-size: 3rem; color: var(--verde-sena); margin-bottom: 8px;">✓</div>
+      <h2>¡Voto Registrado!</h2>
+      <p>Tu voto ha sido depositado exitosamente en la urna virtual. Muchas gracias por tu participación.</p>
+      <small style="color: #666;">Reiniciando mesa de votación en unos segundos...</small>
+    </div>
+  </div>
+
+  <footer class="pie-app">
+    Mesa de Votación Virtual — Centro de Formación SENA
+  </footer>
+
+  <script src="store.js"></script>
+  <script src="votar.js"></script>
+</body>
+</html>

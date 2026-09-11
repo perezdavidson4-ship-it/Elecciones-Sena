@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración — SENA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="franja"></div>
+
+  <header class="topbar">
+    <div class="marca">SENA <span>Panel Jurado</span></div>
+    <nav>
+      <a href="index.html">Ir al Inicio</a>
+      <a href="#" id="btnSalir" style="display: none; color: var(--ambar);">Cerrar Sesión</a>
+    </nav>
+  </header>
+
+  <main class="envolvente ancho">
+
+    <!-- Vista de Acceso mediante Clave -->
+    <section id="vistaAcceso" class="panel" style="max-width: 480px; margin: 40px auto;">
+      <h2>Acceso Administrativo</h2>
+      <p>Ingresa la clave de jurado para administrar el proceso electoral.</p>
+      
+      <div class="campo">
+        <label for="claveAdmin">Contraseña de Administrador:</label>
+        <input type="password" id="claveAdmin" placeholder="Ingresa la clave">
+      </div>
+
+      <div id="errorClave" style="color: var(--rojo); margin-bottom: 12px; display: none; font-weight: 600;">
+        Contraseña incorrecta. Inténtalo de nuevo.
+      </div>
+
+      <button id="btnEntrar" class="boton primario bloque">Ingresar al Panel</button>
+    </section>
+
+    <!-- Vista Principal del Panel Admin (Oculta por defecto) -->
+    <section id="vistaPanel" style="display: none;">
+      
+      <div class="encabezado-pagina">
+        <div class="antetitulo">Control Escrutinio y Urna</div>
+        <h1>Panel de Control de la Jornada</h1>
+      </div>
+
+      <!-- Control de Apertura/Cierre de Urna -->
+      <div class="panel">
+        <h3>Estado de la Urna Electoral</h3>
+        <div id="estadoUrnaTexto" style="margin-bottom: 16px;"></div>
+        <div style="display: flex; gap: 12px;">
+          <button id="btnAbrir" class="boton primario">Abrir Urna</button>
+          <button id="btnCerrar" class="boton fantasma">Cerrar Urna</button>
+        </div>
+      </div>
+
+      <!-- Sección en 2 Columnas: Formulario Candidatos y Resultados -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        
+        <!-- Columna Izquierda: Agregar y Listar Candidatos -->
+        <div>
+          <div class="panel">
+            <h3>Registrar Candidato</h3>
+            <form id="formCandidato">
+              <div class="campo">
+                <label for="numero">Número en Tarjetón:</label>
+                <input type="number" id="numero" min="1" required placeholder="Ej. 01">
+              </div>
+              <div class="campo">
+                <label for="nombres">Nombres y Apellidos:</label>
+                <input type="text" id="nombres" required placeholder="Ej. María Fernanda Gómez">
+              </div>
+              <div class="campo">
+                <label for="programa">Programa de Formación / Ficha:</label>
+                <input type="text" id="programa" placeholder="Ej. ADSO - Ficha 2670123">
+              </div>
+              <div class="campo">
+                <label for="fotoUrl">URL de la Foto (Opcional):</label>
+                <input type="url" id="fotoUrl" placeholder="https://ejemplo.com/foto.jpg">
+              </div>
+              <button type="submit" class="boton primario bloque">Guardar Candidato</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>Candidatos Registrados</h3>
+            <div id="listaCandidatos"></div>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Resultados y Conteo de Votos -->
+        <div>
+          <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="margin: 0;">Escrutinio en Tiempo Real</h3>
+              <button id="btnReiniciar" class="boton peligro" style="padding: 6px 12px; font-size: 0.85rem;">Reiniciar Votación</button>
+            </div>
+            
+            <div id="resumenTotal" style="display: flex; gap: 16px; margin-bottom: 20px;"></div>
+            <div id="resultados"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="pie-app">
+    Sistema de Gestión Electoral — Panel Interno de Jurados SENA
+  </footer>
+
+  <script src="store.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
