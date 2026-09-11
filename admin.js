@@ -1,21 +1,34 @@
 /* ============================================================
-   admin.js — Gestión del Panel Jurado / Administrador
+   admin.js — Gestión del Panel Jurado / Administrador en Tiempo Real
    ============================================================ */
 
 const vistaAcceso = document.getElementById('vistaAcceso');
 const vistaPanel = document.getElementById('vistaPanel');
 const btnSalir = document.getElementById('btnSalir');
 
+let intervaloEscrutinio = null;
+
 function mostrarPanelSiCorresponde() {
   if (Store.sesionAdminActiva()) {
     vistaAcceso.style.display = 'none';
     vistaPanel.style.display = 'block';
     btnSalir.style.display = 'inline-block';
+    
     renderTodo();
+    
+    // Iniciar actualización automática cada 5 segundos
+    if (!intervaloEscrutinio) {
+      intervaloEscrutinio = setInterval(renderResultados, 5000);
+    }
   } else {
     vistaAcceso.style.display = 'block';
     vistaPanel.style.display = 'none';
     btnSalir.style.display = 'none';
+    
+    if (intervaloEscrutinio) {
+      clearInterval(intervaloEscrutinio);
+      intervaloEscrutinio = null;
+    }
   }
 }
 
@@ -69,7 +82,7 @@ function renderEstadoUrna() {
 
 // ---------- Gestión de Candidatos ----------
 
-document.getElementById('formCandidato').addEventListener('submit', e => {
+document.getElementById('formCandidato').addEventListener('submit', async e => {
   e.preventDefault();
   const numero = document.getElementById('numero').value;
   const nombres = document.getElementById('nombres').value;
@@ -77,7 +90,7 @@ document.getElementById('formCandidato').addEventListener('submit', e => {
   const fotoUrl = document.getElementById('fotoUrl').value;
 
   try {
-    Store.agregarCandidato({ numero, nombres, programa, fotoUrl });
+    await Store.agregarCandidato({ numero, nombres, programa, fotoUrl });
     e.target.reset();
     renderCandidatos();
     renderResultados();
@@ -86,9 +99,11 @@ document.getElementById('formCandidato').addEventListener('submit', e => {
   }
 });
 
-function renderCandidatos() {
+async function renderCandidatos() {
   const cont = document.getElementById('listaCandidatos');
-  const candidatos = Store.obtenerCandidatos();
+  cont.innerHTML = '<p class="ayuda">Cargando candidatos...</p>';
+  
+  const candidatos = await Store.obtenerCandidatos();
 
   if (candidatos.length === 0) {
     cont.innerHTML = '<p class="ayuda">No hay candidatos registrados aún.</p>';
@@ -110,9 +125,9 @@ function renderCandidatos() {
   `).join('');
 
   cont.querySelectorAll('button[data-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       if (confirm('¿Deseas eliminar este candidato?')) {
-        Store.eliminarCandidato(btn.dataset.id);
+        await Store.eliminarCandidato(btn.dataset.id);
         renderCandidatos();
         renderResultados();
       }
@@ -120,12 +135,14 @@ function renderCandidatos() {
   });
 }
 
-// ---------- Resultados ----------
+// ---------- Resultados y Porcentajes en Tiempo Real ----------
 
-function renderResultados() {
-  const candidatos = Store.obtenerCandidatos();
-  const conteo = Store.conteoPorCandidato();
-  const total = Store.totalVotos();
+async function renderResultados() {
+  const candidatos = await Store.obtenerCandidatos();
+  const datosVotos = await Store.obtenerResultadosNube();
+  
+  const conteo = datosVotos.conteo || {};
+  const total = datosVotos.total || 0;
   const votosBlanco = conteo['BLANCO'] || 0;
 
   document.getElementById('resumenTotal').innerHTML = `
@@ -153,12 +170,13 @@ function renderResultados() {
       </div>`;
   }).join('');
 
+  const pctBlanco = total ? Math.round((votosBlanco / total) * 100) : 0;
   const anchoBlanco = Math.round((votosBlanco / maximo) * 100);
   const filaBlanco = `
     <div class="resultado-fila">
       <div class="resultado-cabecera">
         <strong>Voto en blanco</strong>
-        <span class="conteo">${votosBlanco} voto(s) (${total ? Math.round((votosBlanco / total) * 100) : 0}%)</span>
+        <span class="conteo">${votosBlanco} voto(s) (${pctBlanco}%)</span>
       </div>
       <div class="barra-fondo"><div class="barra-relleno" style="width:${anchoBlanco}%"></div></div>
     </div>`;
@@ -167,9 +185,9 @@ function renderResultados() {
     (candidatos.length === 0 ? '<p class="ayuda">Registra candidatos para habilitar los resultados.</p>' : filas) + filaBlanco;
 }
 
-document.getElementById('btnReiniciar').addEventListener('click', () => {
-  if (confirm('¿Esta seguro de reiniciar la votación? Se borrarán todos los votos registrados.')) {
-    Store.reiniciarVotacion();
+document.getElementById('btnReiniciar').addEventListener('click', async () => {
+  if (confirm('¿Está seguro de reiniciar la votación? Se borrarán todos los votos registrados.')) {
+    await Store.reiniciarVotacion();
     renderResultados();
   }
 });
